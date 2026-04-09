@@ -3,6 +3,7 @@ import { MapPin, Play } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import type { Memory } from '../../types'
 import { MOODS } from '../../types'
+import { parseSongUrl } from '../../lib/song'
 import { formatViFullDate } from '../../lib/utils'
 
 function mediaCountText(memory: Memory) {
@@ -27,6 +28,7 @@ export function MemoryCard({
     : undefined) ?? ordered[0]
   const mood = MOODS.find((m) => m.key === memory.mood)
   const coverPosition = `${memory.coverFocalX ?? 50}% ${memory.coverFocalY ?? 50}%`
+  const hasSong = Boolean(parseSongUrl(memory.songUrl ?? '').embedId)
 
   return (
     <motion.article
@@ -79,6 +81,12 @@ export function MemoryCard({
           <div className="absolute right-4 top-4 rounded-full bg-cream/80 px-3 py-1 text-xs text-ink shadow-soft dark:bg-black/35 dark:text-cream">
             {mediaCountText(memory)}
           </div>
+
+          {hasSong ? (
+            <div className="absolute bottom-4 left-4 grid h-9 w-9 place-items-center rounded-full bg-ink/55 text-lg text-cream shadow-soft backdrop-blur dark:bg-black/50">
+              🎵
+            </div>
+          ) : null}
         </div>
 
         <div className="p-6">

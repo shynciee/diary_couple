@@ -9,6 +9,10 @@ import { UploadZone } from '../components/media/UploadZone'
 import { useMemory } from '../hooks/useMemories'
 import { useUpload } from '../hooks/useUpload'
 import { db } from '../lib/firebase'
+import { LocationSearchField, type LocationFieldValue } from '../components/location/LocationSearchField'
+import { SongEmbed } from '../components/memory/SongEmbed'
+import { SongFields } from '../components/memory/SongFields'
+import { parseSongUrl } from '../lib/song'
 import { formatViFullDate } from '../lib/utils'
 import { MOODS, type MediaItem, type MoodKey } from '../types'
 
@@ -57,8 +61,9 @@ export default function MemoryDetail() {
 
   const [title, setTitle] = useState('')
   const [date, setDate] = useState('')
-  const [location, setLocation] = useState('')
+  const [loc, setLoc] = useState<LocationFieldValue>({ location: '' })
   const [description, setDescription] = useState('')
+  const [songUrl, setSongUrl] = useState('')
   const [moodKey, setMoodKey] = useState<MoodKey>('romantic')
   const [draftMedia, setDraftMedia] = useState<MediaItem[]>([])
   const [addMoreOpen, setAddMoreOpen] = useState(false)
@@ -98,8 +103,14 @@ export default function MemoryDetail() {
     if (!memory) return
     setTitle(memory.title)
     setDate(memory.date.toDate().toISOString().slice(0, 10))
-    setLocation(memory.location)
+    setLoc({
+      location: memory.location,
+      locationName: memory.locationName ?? undefined,
+      lat: memory.lat ?? undefined,
+      lng: memory.lng ?? undefined,
+    })
     setDescription(memory.description)
+    setSongUrl(memory.songUrl ?? '')
     setMoodKey(memory.mood)
     setDraftMedia([...ordered])
     setCoverMediaId(memory.coverMediaId ?? null)
@@ -129,17 +140,23 @@ export default function MemoryDetail() {
           ? coverMediaId
           : null
 
+      const parsedSong = parseSongUrl(songUrl)
       setBusy(true)
       await updateDoc(doc(db, 'memories', memory.id), {
         title: title.trim(),
         date: Timestamp.fromDate(new Date(date)),
-        location: location.trim(),
+        location: loc.location.trim(),
+        locationName: loc.locationName ?? null,
+        lat: loc.lat ?? null,
+        lng: loc.lng ?? null,
         description: description.trim(),
         mood: moodKey,
         mediaItems: combined,
         coverMediaId: nextCoverId,
         coverFocalX: clampPercent(coverFocalX),
         coverFocalY: clampPercent(coverFocalY),
+        songUrl: songUrl.trim(),
+        songType: parsedSong.embedId ? parsedSong.songType : null,
         updatedAt: Timestamp.now(),
       })
 
@@ -284,6 +301,13 @@ export default function MemoryDetail() {
                       setCoverFocalX(50)
                       setCoverFocalY(50)
                       setDraggingCover(false)
+                      setLoc({
+                        location: memory.location,
+                        locationName: memory.locationName ?? undefined,
+                        lat: memory.lat ?? undefined,
+                        lng: memory.lng ?? undefined,
+                      })
+                      setSongUrl(memory.songUrl ?? '')
                     }}
                     className="rounded-full border border-rose/25 bg-white/60 px-5 py-2.5 text-sm font-medium text-ink transition hover:bg-white disabled:opacity-60 dark:border-white/10 dark:bg-white/5 dark:text-cream dark:hover:bg-white/10"
                   >
@@ -315,11 +339,10 @@ export default function MemoryDetail() {
 
           <div className="mt-4">
             {edit ? (
-              <input
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                placeholder="Địa điểm"
-                className="w-full rounded-2xl border border-rose/15 bg-white/70 px-4 py-3 text-sm outline-none dark:border-white/10 dark:bg-white/5"
+              <LocationSearchField
+                value={loc}
+                onChange={setLoc}
+                disabled={busy}
               />
             ) : memory.location ? (
               <p className="text-sm text-muted dark:text-cream/70">
@@ -342,6 +365,21 @@ export default function MemoryDetail() {
               </p>
             ) : null}
           </div>
+
+          {edit ? (
+            <div className="mt-4">
+              <SongFields songUrl={songUrl} onSongUrlChange={setSongUrl} disabled={busy} />
+            </div>
+          ) : parseSongUrl(memory.songUrl ?? '').embedId ? (
+            <div className="mt-6">
+              <h3 className="text-sm font-medium text-ink dark:text-cream">
+                🎵 Bài hát của chúng mình
+              </h3>
+              <div className="mt-3">
+                <SongEmbed songUrl={memory.songUrl ?? ''} />
+              </div>
+            </div>
+          ) : null}
         </div>
       </div>
 

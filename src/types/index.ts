@@ -47,10 +47,39 @@ export type Memory = {
   coverMediaId?: string | null
   coverFocalX?: number
   coverFocalY?: number
+  /** Tọa độ từ tìm kiếm địa điểm (OpenStreetMap) — cần để hiển thị trên bản đồ */
+  lat?: number
+  lng?: number
+  /** Tên địa điểm đầy đủ từ geocoding (tuỳ chọn) */
+  locationName?: string
+  songUrl?: string
+  songType?: 'youtube' | 'spotify' | null
   tags: string[]
   createdBy: string
   createdAt: Timestamp
   updatedAt: Timestamp
+}
+
+export type BucketCategory =
+  | 'travel'
+  | 'food'
+  | 'experience'
+  | 'celebration'
+  | 'other'
+
+export type BucketPriority = 'high' | 'medium' | 'low'
+
+export type BucketItem = {
+  coupleId: string
+  title: string
+  description: string
+  category: BucketCategory
+  priority: BucketPriority
+  completed: boolean
+  completedAt: Timestamp | null
+  linkedMemoryId: string | null
+  createdAt: Timestamp
+  createdBy: string
 }
 
 export type Couple = {

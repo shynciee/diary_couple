@@ -7,10 +7,16 @@ import { MOODS } from '../../types'
 import { useAuth } from '../../hooks/useAuth'
 import { useCouple } from '../../hooks/useCouple'
 import { db } from '../../lib/firebase'
+import { parseSongUrl } from '../../lib/song'
 import { serverNow } from '../../lib/firestore'
+import {
+  LocationSearchField,
+  type LocationFieldValue,
+} from '../location/LocationSearchField'
 import { UploadZone } from '../media/UploadZone'
 import { useUpload } from '../../hooks/useUpload'
 import { createMemory } from '../../hooks/useMemories'
+import { SongFields } from './SongFields'
 
 function toMoodKey(v: string): MoodKey {
   return (MOODS.find((m) => m.key === v)?.key ?? 'romantic') as MoodKey
@@ -24,10 +30,11 @@ export function MemoryForm() {
   const [memoryId, setMemoryId] = useState<string>('')
   const [title, setTitle] = useState('')
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
-  const [location, setLocation] = useState('')
+  const [loc, setLoc] = useState<LocationFieldValue>({ location: '' })
   const [description, setDescription] = useState('')
   const [mood, setMood] = useState<MoodKey>('romantic')
   const [tagsText, setTagsText] = useState('')
+  const [songUrl, setSongUrl] = useState('')
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
@@ -70,15 +77,21 @@ export function MemoryForm() {
     }
     try {
       setBusy(true)
+      const parsedSong = parseSongUrl(songUrl)
       const payload = {
         coupleId,
         title: title.trim(),
         date: Timestamp.fromDate(new Date(date)),
-        location: location.trim(),
+        location: loc.location.trim(),
+        locationName: loc.locationName ?? null,
+        lat: loc.lat ?? null,
+        lng: loc.lng ?? null,
         description: description.trim(),
         mood,
         mediaItems: uploader.toMediaItems(),
         tags,
+        songUrl: songUrl.trim(),
+        songType: parsedSong.embedId ? parsedSong.songType : null,
         createdBy: user.uid,
         createdAt: serverNow(),
         updatedAt: serverNow(),
@@ -148,17 +161,11 @@ export function MemoryForm() {
             </select>
           </label>
 
-          <label className="grid gap-1.5 md:col-span-2">
-            <span className="text-xs font-medium text-muted dark:text-cream/70">
-              Địa điểm
-            </span>
-            <input
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              placeholder="Đà Lạt, Việt Nam"
-              className="w-full rounded-2xl border border-rose/15 bg-white/80 px-4 py-3 text-sm outline-none transition focus:border-rose/40 dark:border-white/10 dark:bg-white/5"
-            />
-          </label>
+          <LocationSearchField
+            value={loc}
+            onChange={setLoc}
+            disabled={busy}
+          />
 
           <label className="grid gap-1.5 md:col-span-2">
             <span className="text-xs font-medium text-muted dark:text-cream/70">
@@ -172,6 +179,8 @@ export function MemoryForm() {
               className="w-full resize-none rounded-2xl border border-rose/15 bg-white/80 px-4 py-3 text-sm outline-none transition focus:border-rose/40 dark:border-white/10 dark:bg-white/5"
             />
           </label>
+
+          <SongFields songUrl={songUrl} onSongUrlChange={setSongUrl} disabled={busy} />
 
           <label className="grid gap-1.5 md:col-span-2">
             <span className="text-xs font-medium text-muted dark:text-cream/70">

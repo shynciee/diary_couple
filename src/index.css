@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -96,5 +96,10 @@ body {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+.leaflet-heart-marker {
+  background: transparent !important;
+  border: none !important;
 }
 

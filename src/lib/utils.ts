@@ -19,6 +19,11 @@ export function formatViYear(date: Date | Timestamp) {
   return format(d, 'yyyy', { locale: vi })
 }
 
+/** Khóa yyyy-MM-dd theo giờ địa phương (dùng cho lịch / nhóm kỷ niệm). */
+export function toDateKey(d: Date) {
+  return format(d, 'yyyy-MM-dd')
+}
+
 export function humanFileSize(bytes: number) {
   if (!Number.isFinite(bytes) || bytes <= 0) return '0 B'
   const k = 1024

@@ -26,6 +26,7 @@ export function MemoryCard({
     ? ordered.find((m) => m.id === memory.coverMediaId)
     : undefined) ?? ordered[0]
   const mood = MOODS.find((m) => m.key === memory.mood)
+  const coverPosition = `${memory.coverFocalX ?? 50}% ${memory.coverFocalY ?? 50}%`
 
   return (
     <motion.article
@@ -49,6 +50,7 @@ export function MemoryCard({
                 src={cover.url}
                 alt={memory.title}
                 className="h-full w-full object-cover"
+                style={{ objectPosition: coverPosition }}
                 loading="lazy"
               />
             ) : (
@@ -57,6 +59,7 @@ export function MemoryCard({
                   src={cover.thumbnailUrl || cover.url}
                   alt={memory.title}
                   className="h-full w-full object-cover"
+                  style={{ objectPosition: coverPosition }}
                   loading="lazy"
                 />
                 <div className="absolute inset-0 grid place-items-center">

@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -22,5 +24,77 @@ body {
 
 .prose-editorial {
   @apply text-ink/90 leading-relaxed;
+}
+
+.cover-strip {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(193, 80, 106, 0.35) transparent;
+}
+
+.cover-strip::-webkit-scrollbar {
+  height: 4px;
+}
+
+.cover-strip::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.cover-strip::-webkit-scrollbar-thumb {
+  background-color: rgba(193, 80, 106, 0.35);
+  border-radius: 9999px;
+}
+
+.anniversary-particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.anniversary-particle {
+  position: absolute;
+  left: var(--left);
+  bottom: -24px;
+  font-size: var(--size);
+  line-height: 1;
+  color: rgba(250, 246, 241, 0.32);
+  filter: drop-shadow(0 0 8px rgba(255, 194, 214, 0.25));
+  animation: anniversary-float var(--duration) ease-in-out infinite;
+  animation-delay: var(--delay);
+}
+
+.anniversary-quote {
+  animation: anniversary-fade 450ms ease both;
+}
+
+@keyframes anniversary-float {
+  0% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.5;
+  }
+  60% {
+    opacity: 0.26;
+  }
+  100% {
+    transform: translate3d(-18px, -110vh, 0) rotate(12deg);
+    opacity: 0;
+  }
+}
+
+@keyframes anniversary-fade {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 

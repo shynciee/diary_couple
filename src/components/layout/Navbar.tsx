@@ -1,5 +1,5 @@
 import { Link, NavLink } from 'react-router-dom'
-import { Moon, Sun } from 'lucide-react'
+import { Heart, Moon, Sun } from 'lucide-react'
 import { useAppStore } from '../../store/useAppStore'
 import { useAuth } from '../../hooks/useAuth'
 
@@ -34,6 +34,12 @@ export function Navbar() {
               </NavLink>
               <NavLink to="/gallery" className={navLinkClass}>
                 Thư viện
+              </NavLink>
+              <NavLink to="/anniversary" className={navLinkClass}>
+                <span className="inline-flex items-center gap-1">
+                  <Heart size={14} />
+                  Kỉ niệm
+                </span>
               </NavLink>
               <NavLink to="/settings" className={navLinkClass}>
                 Cài đặt

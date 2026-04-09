@@ -1,6 +1,6 @@
 import { Timestamp, deleteDoc, doc, updateDoc } from 'firebase/firestore'
 import { Pencil, Plus, Star, Trash2, X } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
 import { useNavigate, useParams } from 'react-router-dom'
 import { LightboxViewer } from '../components/media/LightboxViewer'
@@ -63,6 +63,10 @@ export default function MemoryDetail() {
   const [draftMedia, setDraftMedia] = useState<MediaItem[]>([])
   const [addMoreOpen, setAddMoreOpen] = useState(false)
   const [coverMediaId, setCoverMediaId] = useState<string | null>(null)
+  const [coverFocalX, setCoverFocalX] = useState(50)
+  const [coverFocalY, setCoverFocalY] = useState(50)
+  const [draggingCover, setDraggingCover] = useState(false)
+  const coverPreviewRef = useRef<HTMLDivElement | null>(null)
 
   const coupleId = memory?.coupleId ?? ''
   const memoryId = memory?.id ?? id
@@ -73,6 +77,22 @@ export default function MemoryDetail() {
 
   const hasUploading = uploader.items.some((i) => i.status === 'uploading' || i.status === 'compressing' || i.status === 'queued')
   const hasUploadErrors = uploader.items.some((i) => i.status === 'error')
+  const selectedCoverPhoto =
+    draftMedia.find((m) => m.id === coverMediaId && m.type === 'photo') ?? null
+  const coverPosition = `${coverFocalX}% ${coverFocalY}%`
+
+  const clampPercent = (value: number) => Math.max(0, Math.min(100, value))
+
+  const updateCoverFocalFromPointer = (clientX: number, clientY: number) => {
+    const el = coverPreviewRef.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    if (!rect.width || !rect.height) return
+    const x = clampPercent(((clientX - rect.left) / rect.width) * 100)
+    const y = clampPercent(((clientY - rect.top) / rect.height) * 100)
+    setCoverFocalX(Number(x.toFixed(2)))
+    setCoverFocalY(Number(y.toFixed(2)))
+  }
 
   const enterEdit = () => {
     if (!memory) return
@@ -83,6 +103,9 @@ export default function MemoryDetail() {
     setMoodKey(memory.mood)
     setDraftMedia([...ordered])
     setCoverMediaId(memory.coverMediaId ?? null)
+    setCoverFocalX(memory.coverFocalX ?? 50)
+    setCoverFocalY(memory.coverFocalY ?? 50)
+    setDraggingCover(false)
     setAddMoreOpen(false)
     uploader.reset()
     setEdit(true)
@@ -115,6 +138,8 @@ export default function MemoryDetail() {
         mood: moodKey,
         mediaItems: combined,
         coverMediaId: nextCoverId,
+        coverFocalX: clampPercent(coverFocalX),
+        coverFocalY: clampPercent(coverFocalY),
         updatedAt: Timestamp.now(),
       })
 
@@ -172,7 +197,14 @@ export default function MemoryDetail() {
         <div className="relative aspect-video bg-cream/60 dark:bg-white/5">
           {cover ? (
             cover.type === 'photo' ? (
-              <img src={cover.url} alt={memory.title} className="h-full w-full object-cover" />
+              <img
+                src={cover.url}
+                alt={memory.title}
+                className="h-full w-full object-cover"
+                style={{
+                  objectPosition: `${memory.coverFocalX ?? 50}% ${memory.coverFocalY ?? 50}%`,
+                }}
+              />
             ) : (
               <video
                 src={cover.url}
@@ -249,6 +281,9 @@ export default function MemoryDetail() {
                       setAddMoreOpen(false)
                       setDraftMedia([])
                       setCoverMediaId(null)
+                      setCoverFocalX(50)
+                      setCoverFocalY(50)
+                      setDraggingCover(false)
                     }}
                     className="rounded-full border border-rose/25 bg-white/60 px-5 py-2.5 text-sm font-medium text-ink transition hover:bg-white disabled:opacity-60 dark:border-white/10 dark:bg-white/5 dark:text-cream dark:hover:bg-white/10"
                   >
@@ -334,7 +369,7 @@ export default function MemoryDetail() {
               <h3 className="text-sm font-medium text-ink dark:text-cream">
                 Chọn ảnh đại diện
               </h3>
-              <div className="mt-3 flex gap-3 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <div className="cover-strip mt-3 flex flex-nowrap gap-2 overflow-x-auto pb-2">
                 {draftMedia
                   .filter((m) => m.type === 'photo')
                   .map((m) => {
@@ -343,9 +378,13 @@ export default function MemoryDetail() {
                       <button
                         key={m.id}
                         type="button"
-                        onClick={() => setCoverMediaId(m.id)}
+                        onClick={() => {
+                          setCoverMediaId(m.id)
+                          setCoverFocalX(50)
+                          setCoverFocalY(50)
+                        }}
                         className={[
-                          'relative h-16 w-28 shrink-0 overflow-hidden rounded-xl border transition',
+                          'relative h-[60px] w-[80px] min-w-[80px] shrink-0 overflow-hidden rounded-xl border transition',
                           selected
                             ? 'border-rose ring-2 ring-rose/30'
                             : 'border-rose/15 hover:border-rose/30 dark:border-white/10 dark:hover:border-white/20',
@@ -373,6 +412,65 @@ export default function MemoryDetail() {
                 ) : null}
               </div>
             </div>
+
+            {selectedCoverPhoto ? (
+              <div className="mt-6">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <h3 className="text-sm font-medium text-ink dark:text-cream">
+                    Căn chỉnh ảnh đại diện
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCoverFocalX(50)
+                      setCoverFocalY(50)
+                    }}
+                    className="rounded-full border border-rose/25 bg-white/60 px-4 py-1.5 text-xs font-medium text-ink transition hover:bg-white dark:border-white/10 dark:bg-white/5 dark:text-cream dark:hover:bg-white/10"
+                  >
+                    Đặt lại về giữa
+                  </button>
+                </div>
+                <p className="mt-2 text-xs text-muted dark:text-cream/70">
+                  Kéo ảnh để chọn vùng hiển thị
+                </p>
+
+                <div
+                  ref={coverPreviewRef}
+                  className={[
+                    'relative mt-3 aspect-video max-w-xl overflow-hidden rounded-2xl border border-rose/15 bg-black/30 select-none touch-none',
+                    draggingCover ? 'cursor-grabbing' : 'cursor-grab',
+                  ].join(' ')}
+                  onPointerDown={(e) => {
+                    e.preventDefault()
+                    setDraggingCover(true)
+                    e.currentTarget.setPointerCapture(e.pointerId)
+                    updateCoverFocalFromPointer(e.clientX, e.clientY)
+                  }}
+                  onPointerMove={(e) => {
+                    if (!draggingCover) return
+                    updateCoverFocalFromPointer(e.clientX, e.clientY)
+                  }}
+                  onPointerUp={(e) => {
+                    setDraggingCover(false)
+                    e.currentTarget.releasePointerCapture(e.pointerId)
+                  }}
+                  onPointerCancel={() => setDraggingCover(false)}
+                >
+                  <img
+                    src={selectedCoverPhoto.url}
+                    alt={selectedCoverPhoto.caption || 'cover preview'}
+                    className="h-full w-full object-cover"
+                    style={{ objectPosition: coverPosition }}
+                    draggable={false}
+                  />
+                  <div className="pointer-events-none absolute inset-0">
+                    <div className="absolute left-1/2 top-1/2 h-8 w-px -translate-x-1/2 -translate-y-1/2 bg-white/70" />
+                    <div className="absolute left-1/2 top-1/2 h-px w-8 -translate-x-1/2 -translate-y-1/2 bg-white/70" />
+                    <div className="absolute left-1/2 top-1/2 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/90 bg-white/60" />
+                  </div>
+                </div>
+              </div>
+            ) : null}
 
             {draftMedia.length ? (
               <div className="mt-5 grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">

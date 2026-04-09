@@ -6,6 +6,7 @@ import MemoryDetail from './pages/MemoryDetail'
 import Upload from './pages/Upload'
 import Gallery from './pages/Gallery'
 import Settings from './pages/Settings'
+import Anniversary from './pages/Anniversary'
 import { ProtectedRoute } from './components/layout/ProtectedRoute'
 import { Navbar } from './components/layout/Navbar'
 
@@ -54,6 +55,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <Settings />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/anniversary"
+          element={
+            <ProtectedRoute>
+              <Anniversary />
             </ProtectedRoute>
           }
         />

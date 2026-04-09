@@ -1,0 +1,36 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isCoupleMember(coupleId) {
+      let couple = get(/databases/$(database)/documents/couples/$(coupleId)).data;
+      return couple.user1 == request.auth.uid || couple.user2 == request.auth.uid;
+    }
+
+    match /couples/{coupleId} {
+      allow read: if isSignedIn() && (resource.data.user1 == request.auth.uid || resource.data.user2 == request.auth.uid);
+
+      // create: user1 must be the creator; user2 may be null initially
+      allow create: if isSignedIn()
+        && request.resource.data.user1 == request.auth.uid
+        && request.resource.data.coupleId == coupleId;
+
+      // update/delete only by members
+      allow update, delete: if isSignedIn() && (resource.data.user1 == request.auth.uid || resource.data.user2 == request.auth.uid);
+    }
+
+    match /memories/{memoryId} {
+      allow read: if isSignedIn() && isCoupleMember(resource.data.coupleId);
+
+      allow create: if isSignedIn()
+        && request.resource.data.createdBy == request.auth.uid
+        && isCoupleMember(request.resource.data.coupleId);
+
+      allow update, delete: if isSignedIn() && isCoupleMember(resource.data.coupleId);
+    }
+  }
+}
+

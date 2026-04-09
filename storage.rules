@@ -1,0 +1,22 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isCoupleMember(coupleId) {
+      return firestore.get(/databases/(default)/documents/couples/$(coupleId)).data.user1 == request.auth.uid
+        || firestore.get(/databases/(default)/documents/couples/$(coupleId)).data.user2 == request.auth.uid;
+    }
+
+    match /couples/{coupleId}/memories/{memoryId}/{filename} {
+      allow read: if isSignedIn() && isCoupleMember(coupleId);
+      allow write: if isSignedIn()
+        && isCoupleMember(coupleId)
+        && request.resource.size < 100 * 1024 * 1024
+        && (request.resource.contentType.matches('image/.*') || request.resource.contentType.matches('video/.*'));
+    }
+  }
+}
+

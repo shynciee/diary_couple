@@ -1,0 +1,62 @@
+import type { Timestamp } from 'firebase/firestore'
+
+export type MoodKey =
+  | 'romantic'
+  | 'happy'
+  | 'adventure'
+  | 'peaceful'
+  | 'special'
+  | 'missing'
+
+export type MoodOption = {
+  key: MoodKey
+  emoji: string
+  label: string
+}
+
+export const MOODS: MoodOption[] = [
+  { key: 'romantic', emoji: '🥰', label: 'Lãng mạn' },
+  { key: 'happy', emoji: '😊', label: 'Vui vẻ' },
+  { key: 'adventure', emoji: '🌊', label: 'Phiêu lưu' },
+  { key: 'peaceful', emoji: '☕', label: 'Bình yên' },
+  { key: 'special', emoji: '🎉', label: 'Đặc biệt' },
+  { key: 'missing', emoji: '😢', label: 'Nhớ nhung' },
+]
+
+export type MediaItem = {
+  id: string
+  type: 'photo' | 'video'
+  url: string
+  thumbnailUrl: string
+  storagePath: string // Cloudinary public_id
+  caption: string
+  width: number
+  height: number
+  order: number
+}
+
+export type Memory = {
+  memoryId?: string
+  coupleId: string
+  title: string
+  date: Timestamp
+  location: string
+  description: string
+  mood: MoodKey
+  mediaItems: MediaItem[]
+  tags: string[]
+  createdBy: string
+  createdAt: Timestamp
+  updatedAt: Timestamp
+}
+
+export type Couple = {
+  coupleId: string
+  user1: string
+  user2: string | null
+  createdAt: Timestamp
+  startDate: Timestamp
+  inviteToken?: string
+  inviteTokenCreatedAt?: Timestamp
+}
+

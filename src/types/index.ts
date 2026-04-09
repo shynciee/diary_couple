@@ -44,6 +44,7 @@ export type Memory = {
   description: string
   mood: MoodKey
   mediaItems: MediaItem[]
+  coverMediaId?: string | null
   tags: string[]
   createdBy: string
   createdAt: Timestamp

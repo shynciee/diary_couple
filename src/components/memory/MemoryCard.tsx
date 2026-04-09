@@ -21,7 +21,10 @@ export function MemoryCard({
   memory: Memory & { id: string }
   onDelete?: (id: string) => void
 }) {
-  const cover = [...memory.mediaItems].sort((a, b) => a.order - b.order)[0]
+  const ordered = [...(memory.mediaItems ?? [])].sort((a, b) => a.order - b.order)
+  const cover = (memory.coverMediaId
+    ? ordered.find((m) => m.id === memory.coverMediaId)
+    : undefined) ?? ordered[0]
   const mood = MOODS.find((m) => m.key === memory.mood)
 
   return (

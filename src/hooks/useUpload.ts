@@ -214,6 +214,22 @@ export function useUpload({ coupleId, memoryId }: UseUploadParams) {
     })
   }, [])
 
+  const reset = useCallback(() => {
+    // Abort any in-flight uploads and revoke object URLs.
+    for (const [id, xhr] of xhrRef.current.entries()) {
+      try {
+        xhr.abort()
+      } catch {
+        // ignore
+      }
+      xhrRef.current.delete(id)
+    }
+    setItems((prev) => {
+      for (const it of prev) URL.revokeObjectURL(it.previewUrl)
+      return []
+    })
+  }, [])
+
   const allDone = useMemo(
     () => items.length > 0 && items.every((i) => i.status === 'done'),
     [items],
@@ -244,6 +260,7 @@ export function useUpload({ coupleId, memoryId }: UseUploadParams) {
     cancelUpload,
     setCaption,
     reorder,
+    reset,
     allDone,
     toMediaItems,
   }

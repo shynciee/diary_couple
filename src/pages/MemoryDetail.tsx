@@ -1,14 +1,16 @@
 import { Timestamp, deleteDoc, doc, updateDoc } from 'firebase/firestore'
-import { Pencil, Trash2 } from 'lucide-react'
+import { Pencil, Plus, Star, Trash2, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
 import { useNavigate, useParams } from 'react-router-dom'
 import { LightboxViewer } from '../components/media/LightboxViewer'
 import { MediaGrid } from '../components/media/MediaGrid'
+import { UploadZone } from '../components/media/UploadZone'
 import { useMemory } from '../hooks/useMemories'
+import { useUpload } from '../hooks/useUpload'
 import { db } from '../lib/firebase'
 import { formatViFullDate } from '../lib/utils'
-import { MOODS, type MoodKey } from '../types'
+import { MOODS, type MediaItem, type MoodKey } from '../types'
 
 export default function MemoryDetail() {
   const { id = '' } = useParams()
@@ -21,17 +23,34 @@ export default function MemoryDetail() {
     () => (memory ? [...memory.mediaItems].sort((a, b) => a.order - b.order) : []),
     [memory],
   )
-  const cover = ordered[0]
+  const cover = useMemo(() => {
+    if (!memory) return undefined
+    const coverId = memory.coverMediaId
+    const found = coverId ? ordered.find((m) => m.id === coverId) : undefined
+    return found ?? ordered[0]
+  }, [memory, ordered])
   const mood = MOODS.find((m) => m.key === memory?.mood)
 
-  const photoSlides = useMemo(() => {
-    const photos = ordered.filter((m) => m.type === 'photo')
-    return photos.map((p) => ({
-      src: p.url,
-      type: 'image' as const,
-      description: p.caption || '',
-    }))
-  }, [ordered])
+  const slides = useMemo(
+    () =>
+      ordered.map((m) => {
+        if (m.type === 'video') {
+          return {
+            src: m.url,
+            type: 'video' as const,
+            poster: m.thumbnailUrl || m.url,
+            description: m.caption || '',
+            sources: [{ src: m.url, type: 'video/mp4' }],
+          }
+        }
+        return {
+          src: m.url,
+          type: 'image' as const,
+          description: m.caption || '',
+        }
+      }),
+    [ordered],
+  )
 
   const [lightboxOpen, setLightboxOpen] = useState(false)
   const [lightboxIndex, setLightboxIndex] = useState(0)
@@ -41,6 +60,19 @@ export default function MemoryDetail() {
   const [location, setLocation] = useState('')
   const [description, setDescription] = useState('')
   const [moodKey, setMoodKey] = useState<MoodKey>('romantic')
+  const [draftMedia, setDraftMedia] = useState<MediaItem[]>([])
+  const [addMoreOpen, setAddMoreOpen] = useState(false)
+  const [coverMediaId, setCoverMediaId] = useState<string | null>(null)
+
+  const coupleId = memory?.coupleId ?? ''
+  const memoryId = memory?.id ?? id
+  const uploader = useUpload({
+    coupleId: coupleId || 'unknown',
+    memoryId: memoryId || 'unknown',
+  })
+
+  const hasUploading = uploader.items.some((i) => i.status === 'uploading' || i.status === 'compressing' || i.status === 'queued')
+  const hasUploadErrors = uploader.items.some((i) => i.status === 'error')
 
   const enterEdit = () => {
     if (!memory) return
@@ -49,12 +81,31 @@ export default function MemoryDetail() {
     setLocation(memory.location)
     setDescription(memory.description)
     setMoodKey(memory.mood)
+    setDraftMedia([...ordered])
+    setCoverMediaId(memory.coverMediaId ?? null)
+    setAddMoreOpen(false)
+    uploader.reset()
     setEdit(true)
   }
 
   const saveEdit = async () => {
     if (!memory) return
     try {
+      if (hasUploading) {
+        toast.error('Vui lòng chờ upload hoàn tất')
+        return
+      }
+      if (hasUploadErrors) {
+        toast.error('Có file upload lỗi. Hãy xoá file lỗi hoặc thử lại.')
+        return
+      }
+      const added = uploader.items.length ? uploader.toMediaItems() : []
+      const combined = [...draftMedia, ...added].map((m, idx) => ({ ...m, order: idx }))
+      const nextCoverId =
+        coverMediaId && combined.some((m) => m.id === coverMediaId)
+          ? coverMediaId
+          : null
+
       setBusy(true)
       await updateDoc(doc(db, 'memories', memory.id), {
         title: title.trim(),
@@ -62,9 +113,13 @@ export default function MemoryDetail() {
         location: location.trim(),
         description: description.trim(),
         mood: moodKey,
+        mediaItems: combined,
+        coverMediaId: nextCoverId,
         updatedAt: Timestamp.now(),
       })
+
       toast.success('Đã lưu thay đổi')
+      uploader.reset()
       setEdit(false)
     } catch (e) {
       console.error(e)
@@ -179,7 +234,7 @@ export default function MemoryDetail() {
                 <>
                   <button
                     type="button"
-                    disabled={busy}
+                    disabled={busy || hasUploading}
                     onClick={saveEdit}
                     className="rounded-full bg-rose px-5 py-2.5 text-sm font-medium text-cream shadow-soft transition hover:brightness-95 disabled:opacity-60"
                   >
@@ -188,7 +243,13 @@ export default function MemoryDetail() {
                   <button
                     type="button"
                     disabled={busy}
-                    onClick={() => setEdit(false)}
+                    onClick={() => {
+                      uploader.reset()
+                      setEdit(false)
+                      setAddMoreOpen(false)
+                      setDraftMedia([])
+                      setCoverMediaId(null)
+                    }}
                     className="rounded-full border border-rose/25 bg-white/60 px-5 py-2.5 text-sm font-medium text-ink transition hover:bg-white disabled:opacity-60 dark:border-white/10 dark:bg-white/5 dark:text-cream dark:hover:bg-white/10"
                   >
                     Huỷ
@@ -250,19 +311,159 @@ export default function MemoryDetail() {
       </div>
 
       <div className="mt-8">
-        <MediaGrid
-          items={memory.mediaItems}
-          onPhotoClick={(photoIndex) => {
-            setLightboxIndex(photoIndex)
-            setLightboxOpen(true)
-          }}
-        />
+        {edit ? (
+          <section className="rounded-[28px] border border-rose/15 bg-white/70 p-6 shadow-soft dark:border-white/10 dark:bg-white/5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="font-serif text-2xl">Ảnh & Video</h2>
+                <p className="mt-1 text-sm text-muted dark:text-cream/70">
+                  Xoá/Thêm sẽ chỉ được lưu khi bạn bấm Lưu.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAddMoreOpen((v) => !v)}
+                className="inline-flex items-center gap-2 rounded-full border border-rose/25 bg-white/60 px-5 py-2.5 text-sm font-medium text-ink transition hover:bg-white dark:border-white/10 dark:bg-white/5 dark:text-cream dark:hover:bg-white/10"
+              >
+                <Plus size={16} />
+                Thêm ảnh/video
+              </button>
+            </div>
+
+            <div className="mt-6">
+              <h3 className="text-sm font-medium text-ink dark:text-cream">
+                Chọn ảnh đại diện
+              </h3>
+              <div className="mt-3 flex gap-3 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {draftMedia
+                  .filter((m) => m.type === 'photo')
+                  .map((m) => {
+                    const selected = (coverMediaId ?? null) === m.id
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => setCoverMediaId(m.id)}
+                        className={[
+                          'relative h-16 w-28 shrink-0 overflow-hidden rounded-xl border transition',
+                          selected
+                            ? 'border-rose ring-2 ring-rose/30'
+                            : 'border-rose/15 hover:border-rose/30 dark:border-white/10 dark:hover:border-white/20',
+                        ].join(' ')}
+                        aria-label="Select cover"
+                      >
+                        <img
+                          src={m.url}
+                          alt={m.caption || 'cover'}
+                          className="h-full w-full object-cover"
+                          loading="lazy"
+                        />
+                        {selected ? (
+                          <div className="absolute right-1 top-1 grid h-7 w-7 place-items-center rounded-full bg-cream/85 text-ink shadow-soft dark:bg-black/40 dark:text-cream">
+                            <Star size={16} className="fill-current" />
+                          </div>
+                        ) : null}
+                      </button>
+                    )
+                  })}
+                {draftMedia.filter((m) => m.type === 'photo').length === 0 ? (
+                  <div className="text-sm text-muted dark:text-cream/70">
+                    Chưa có ảnh nào để chọn làm đại diện.
+                  </div>
+                ) : null}
+              </div>
+            </div>
+
+            {draftMedia.length ? (
+              <div className="mt-5 grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                {draftMedia.map((m) => (
+                  <div
+                    key={m.id}
+                    className="group relative overflow-hidden rounded-2xl border border-rose/15 bg-white/60 dark:border-white/10 dark:bg-white/5"
+                  >
+                    <img
+                      src={m.type === 'video' ? m.thumbnailUrl || m.url : m.url}
+                      alt={m.caption || (m.type === 'video' ? 'video' : 'photo')}
+                      className="aspect-[16/10] w-full object-cover"
+                      loading="lazy"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const ok = window.confirm('Xóa ảnh này?')
+                        if (!ok) return
+                        setDraftMedia((prev) => prev.filter((x) => x.id !== m.id))
+                        setCoverMediaId((cur) => (cur === m.id ? null : cur))
+                      }}
+                      className="absolute right-2 top-2 inline-flex h-9 w-9 items-center justify-center rounded-full bg-cream/85 text-ink shadow-soft transition hover:bg-cream dark:bg-black/40 dark:text-cream"
+                      aria-label="Remove"
+                    >
+                      <X size={18} />
+                    </button>
+                    <div className="p-3">
+                      <input
+                        value={m.caption || ''}
+                        onChange={(e) =>
+                          setDraftMedia((prev) =>
+                            prev.map((x) =>
+                              x.id === m.id ? { ...x, caption: e.target.value } : x,
+                            ),
+                          )
+                        }
+                        placeholder="Thêm mô tả cho ảnh này..."
+                        className="w-full rounded-xl border border-rose/15 bg-white/70 px-3 py-2 text-sm outline-none focus:border-rose/40 dark:border-white/10 dark:bg-white/5"
+                      />
+                    </div>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setAddMoreOpen(true)}
+                  className="grid aspect-[16/10] place-items-center rounded-2xl border border-dashed border-rose/30 bg-cream/40 text-sm font-medium text-ink transition hover:border-rose/45 hover:bg-cream/60 dark:border-white/15 dark:bg-white/5 dark:text-cream dark:hover:bg-white/10"
+                >
+                  <span>+ Thêm ảnh/video</span>
+                </button>
+              </div>
+            ) : (
+              <div className="mt-5 grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                <button
+                  type="button"
+                  onClick={() => setAddMoreOpen(true)}
+                  className="grid aspect-[16/10] place-items-center rounded-2xl border border-dashed border-rose/30 bg-cream/40 text-sm font-medium text-ink transition hover:border-rose/45 hover:bg-cream/60 dark:border-white/15 dark:bg-white/5 dark:text-cream dark:hover:bg-white/10"
+                >
+                  <span>+ Thêm ảnh/video</span>
+                </button>
+              </div>
+            )}
+
+            {addMoreOpen ? (
+              <div className="mt-6">
+                <UploadZone
+                  items={uploader.items}
+                  onAddFiles={uploader.addFiles}
+                  onRemove={uploader.removeItem}
+                  onCancel={uploader.cancelUpload}
+                  onReorder={uploader.reorder}
+                  onCaption={uploader.setCaption}
+                />
+              </div>
+            ) : null}
+          </section>
+        ) : (
+          <MediaGrid
+            items={memory.mediaItems}
+            onItemClick={(index) => {
+              setLightboxIndex(index)
+              setLightboxOpen(true)
+            }}
+          />
+        )}
       </div>
 
       <LightboxViewer
         open={lightboxOpen}
         index={lightboxIndex}
-        slides={photoSlides}
+        slides={slides}
         onClose={() => setLightboxOpen(false)}
       />
     </main>

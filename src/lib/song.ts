@@ -21,7 +21,7 @@ export function parseSongUrl(url: string): ParsedSong {
 }
 
 export function youtubeEmbedSrc(videoId: string) {
-  return `https://www.youtube.com/embed/${videoId}?autoplay=0&controls=1`
+  return `https://www.youtube.com/embed/${videoId}?autoplay=1&controls=1`
 }
 
 export function spotifyEmbedSrc(trackId: string) {

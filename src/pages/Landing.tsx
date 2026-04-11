@@ -17,8 +17,7 @@ export default function Landing() {
             Nhật Ký <span className="text-rose">Đôi Ta</span>
           </h1>
           <p className="prose-editorial mt-5 max-w-prose text-lg text-muted dark:text-cream/70">
-            Lưu giữ kỷ niệm bằng ảnh và video theo dòng thời gian — ấm áp, tinh
-            tế, và chỉ dành cho hai bạn.
+            Lưu giữ kỷ niệm của Quang Hùng và Ngọc Hân 
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link
